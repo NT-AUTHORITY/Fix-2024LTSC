@@ -1,0 +1,50 @@
+# Office 2024 LTSC Preview Fix Script
+
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+Add-Type -AssemblyName PresentationFramework
+
+# If not admin, restart with admin privileges
+if (-not $isAdmin) {
+    try {
+        Start-Process PowerShell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+        exit
+    }
+    catch {
+        [System.Windows.MessageBox]::Show("Failed to get administrator privileges.", "Error", "OK", "Error")
+        exit 1
+    }
+}
+
+# Detect Office installation path
+$officePath1 = "C:\Program Files\Microsoft Office\Office16"
+$officePath2 = "C:\Program Files (x86)\Microsoft Office\Office16"
+
+$officePath = $null
+
+if (Test-Path "$officePath1\ospp.vbs") {
+    $officePath = $officePath1
+} elseif (Test-Path "$officePath2\ospp.vbs") {
+    $officePath = $officePath2
+} else {
+    [System.Windows.MessageBox]::Show("Office installation directory not found.", "Error", "OK", "Error")
+    exit 1
+}
+
+Write-Host "Found Office installation directory: $officePath" -ForegroundColor Green
+Set-Location -Path $officePath
+
+Write-Host "Removing key..." -ForegroundColor Yellow
+cscript ospp.vbs /unpkey:TX3T2
+
+Write-Host "Removing host..." -ForegroundColor Yellow
+cscript ospp.vbs /remhst
+
+Write-Host "Resetting activation..." -ForegroundColor Yellow
+cscript ospp.vbs /rearm
+
+Write-Host "Installing new key..." -ForegroundColor Yellow
+cscript ospp.vbs /inpkey:XJ2XN-FW8RK-P4HMP-DKDBV-GCVGB
+
+# Show completion message
+[System.Windows.MessageBox]::Show("Done.", "Information", "OK", "Information")
